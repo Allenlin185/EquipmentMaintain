@@ -1,0 +1,56 @@
+﻿<Window x:Class="SocketLocationApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SocketLocationApp" 
+        xmlns:staticData="clr-namespace:SocketLocationApp"
+        mc:Ignorable="d"
+        Loaded="Window_Loaded"
+        Title="Socket location CRUD" Height="450" Width="800" Icon="images.png" WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <staticData:PointList x:Key="PointList"/>
+        <staticData:LocationList x:Key="LocationList"/>
+    </Window.Resources>
+    <Grid>
+        <Image Margin="10,10,0,0" Width="772" Source="hota_logo.png" VerticalAlignment="Top" HorizontalAlignment="Left" Height="65"/>
+        <DataGrid x:Name="DG_socket" HorizontalAlignment="Left" Height="270" Margin="10,95,0,0" VerticalAlignment="Top" Width="772" 
+                  AutoGenerateColumns="False" RowHeight="30"
+                  RowEditEnding="DG_socket_RowEditEnding"
+                  AddingNewItem="DG_socket_AddingNewItem">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="序號" Width="60" Binding="{Binding Path=id, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" FontFamily="Arial Black" FontSize="14"/>
+                <DataGridTextColumn Header="IP位址" Width="180" Binding="{Binding Path=ip_address, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontFamily="Arial Black" FontSize="14"/>
+                <!--DataGridTextColumn Header="加工站別" Width="100" Binding="{Binding Path=location, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontFamily="Arial Black" FontSize="14"/-->
+                <DataGridTemplateColumn Header="加工站別" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Path=location}" FontFamily="Arial Black" FontSize="14"></TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                            <ComboBox SelectedItem="{Binding Path=location, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{StaticResource LocationList}" FontFamily="Arial Black" FontSize="14"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="機台名稱" Width="100" Binding="{Binding Path=readerno, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontFamily="Arial Black" FontSize="14"/>
+                <DataGridTemplateColumn Header="出入口定義" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Path=pointname}" FontFamily="Arial Black" FontSize="14"></TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                            <ComboBox SelectedItem="{Binding Path=pointname, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{StaticResource PointList}" FontFamily="Arial Black" FontSize="14"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="修改者" Width="100" Binding="{Binding Path=update_user, Mode=TwoWay}" IsReadOnly="True" FontFamily="Arial Black" FontSize="14"/>
+                <DataGridTextColumn Header="修改時間" Width="100" Binding="{Binding Path=update_dt,StringFormat=\{0:yyyy-MM-dd\},Mode=TwoWay}" IsReadOnly="True" FontFamily="Arial Black" FontSize="14"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <Button Content="離開" HorizontalAlignment="Left" Margin="670,370,0,0" VerticalAlignment="Top" Width="112" Height="30" Foreground="#FFFDFDFD" Background="#FFEC7979" BorderBrush="#FFEC7979" Click="Button_Click"/>
+    </Grid>
+</Window>
