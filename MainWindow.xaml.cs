@@ -37,13 +37,16 @@ namespace SocketLocationApp
         public LocationList()
         {
             Add("");
+            Add("GG");
             Add("YG");
             Add("YG-M");
+            Add("YG-E");
             Add("IG");
             Add("IG-M");
             Add("HP");
             Add("QC1");
             Add("QC2");
+            Add("QC2-YGIG");
             Add("FQC");
         }
     }
@@ -234,16 +237,17 @@ namespace SocketLocationApp
             }
             Conn.Close();
             Conn.Open();
-            SelectSQL = @"SELECT id FROM socketlocation WHERE location = @location AND readerno = @readerno ";
+            SelectSQL = @"SELECT id FROM socketlocation WHERE location = @location AND readerno = @readerno AND pointname = @pointname ";
             cmd = new MySqlCommand(SelectSQL, Conn);
             cmd.Parameters.AddWithValue("@location", locationInfo.location);
             cmd.Parameters.AddWithValue("@readerno", locationInfo.readerno);
+            cmd.Parameters.AddWithValue("@pointname", locationInfo.pointname);
             dataReader = cmd.ExecuteReader();
             if (dataReader.HasRows)
             {
                 while(dataReader.Read())
                 {
-                    if (dataReader.GetInt32(0) != locationInfo.id) ErrorMsg += "加工站別 & 機台名稱已存在\n";
+                    if (dataReader.GetInt32(0) != locationInfo.id) ErrorMsg += "加工站別 & 機台名稱 & 出入口定義已存在\n";
                     break;
                 }
             }
