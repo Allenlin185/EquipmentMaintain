@@ -7,50 +7,75 @@
         xmlns:staticData="clr-namespace:SocketLocationApp"
         mc:Ignorable="d"
         Loaded="Window_Loaded"
-        Title="Socket location CRUD" Height="450" Width="800" Icon="images.png" WindowStartupLocation="CenterScreen">
+        Title="Socket location CRUD" Width="1024" Icon="images.png" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <staticData:PointList x:Key="PointList"/>
         <staticData:LocationList x:Key="LocationList"/>
     </Window.Resources>
     <Grid>
-        <Image Margin="10,10,0,0" Width="772" Source="hota_logo.png" VerticalAlignment="Top" HorizontalAlignment="Left" Height="65"/>
-        <DataGrid x:Name="DG_socket" HorizontalAlignment="Left" Height="270" Margin="10,95,0,0" VerticalAlignment="Top" Width="772" 
-                  AutoGenerateColumns="False" RowHeight="30"
-                  RowEditEnding="DG_socket_RowEditEnding"
-                  AddingNewItem="DG_socket_AddingNewItem">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="序號" Width="60" Binding="{Binding Path=id, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" FontFamily="Arial Black" FontSize="14"/>
-                <DataGridTextColumn Header="IP位址" Width="180" Binding="{Binding Path=ip_address, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontFamily="Arial Black" FontSize="14"/>
-                <!--DataGridTextColumn Header="加工站別" Width="100" Binding="{Binding Path=location, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontFamily="Arial Black" FontSize="14"/-->
-                <DataGridTemplateColumn Header="加工站別" Width="100">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Path=location}" FontFamily="Arial Black" FontSize="14"></TextBlock>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <ComboBox SelectedItem="{Binding Path=location, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{StaticResource LocationList}" FontFamily="Arial Black" FontSize="14"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="機台名稱" Width="100" Binding="{Binding Path=readerno, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontFamily="Arial Black" FontSize="14"/>
-                <DataGridTemplateColumn Header="出入口定義" Width="100">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Path=pointname}" FontFamily="Arial Black" FontSize="14"></TextBlock>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <ComboBox SelectedItem="{Binding Path=pointname, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{StaticResource PointList}" FontFamily="Arial Black" FontSize="14"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="修改者" Width="100" Binding="{Binding Path=update_user, Mode=TwoWay}" IsReadOnly="True" FontFamily="Arial Black" FontSize="14"/>
-                <DataGridTextColumn Header="修改時間" Width="100" Binding="{Binding Path=update_dt,StringFormat=\{0:yyyy-MM-dd\},Mode=TwoWay}" IsReadOnly="True" FontFamily="Arial Black" FontSize="14"/>
-            </DataGrid.Columns>
-        </DataGrid>
-        <Button Content="離開" HorizontalAlignment="Left" Margin="670,370,0,0" VerticalAlignment="Top" Width="112" Height="30" Foreground="#FFFDFDFD" Background="#FFEC7979" BorderBrush="#FFEC7979" Click="Button_Click"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="70"/>
+            <RowDefinition/>
+            <RowDefinition Height="70"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Image Source="hota_logo.png" Height="65"/>
+        </StackPanel>
+        <TabControl Grid.Row="1" Margin="10" FontFamily="Leelawadee UI" FontSize="14" MinHeight="200">
+            <TabItem Header="Socket Location" Padding="20,10">
+                <DataGrid x:Name="DG_socket" Padding="7" MinRowHeight="30" AutoGenerateColumns="False" RowEditEnding="DG_socket_RowEditEnding" AddingNewItem="DG_socket_AddingNewItem" CommandManager.PreviewExecuted="Delete_Socket">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="序號" Width="70" Binding="{Binding Path=id, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="IP位址" Width="195" Binding="{Binding Path=ip_address, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <DataGridTemplateColumn Header="加工站別" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Path=location}" FontFamily="Arial Black" FontSize="14"></TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox SelectedItem="{Binding Path=location, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{StaticResource LocationList}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="機台名稱" Width="185" Binding="{Binding Path=readerno, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <DataGridTemplateColumn Header="出入口定義" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Path=pointname}"></TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox SelectedItem="{Binding Path=pointname, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{StaticResource PointList}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="修改者" Width="120" Binding="{Binding Path=update_user, Mode=TwoWay}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="修改時間" Width="120" Binding="{Binding Path=update_dt,StringFormat=\{0:yyyy-MM-dd\},Mode=TwoWay}" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Leonardo Machine" Padding="20,10">
+                <DataGrid x:Name="DG_leonardo" Padding="7" MinRowHeight="30" 
+                            AutoGenerateColumns="False" 
+                            RowEditEnding="DG_leonardo_RowEditEnding" 
+                            AddingNewItem="DG_leonardo_AddingNewItem" 
+                            CommandManager.PreviewExecuted="Delete_Leonardo">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="IP位址" Width="200" Binding="{Binding Path=ip_address, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <DataGridTextColumn Header="機台名稱" Width="200" Binding="{Binding Path=MachineNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <DataGridTextColumn Header="站別" Width="150" Binding="{Binding Path=Station, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <DataGridTextColumn Header="間隔時間" Width="100" Binding="{Binding Path=Intervals, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <DataGridTextColumn Header="修改者" Width="140" Binding="{Binding Path=update_user, Mode=TwoWay}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="修改時間" Width="150" Binding="{Binding Path=update_dt,StringFormat=\{0:yyyy-MM-dd\},Mode=TwoWay}" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+        <StackPanel Grid.Row="2" Margin="10">
+            <Button Content="離開" Width="100" Height="30" Margin="10" Foreground="#FFFDFDFD" Background="#FFEC7979" BorderBrush="#FFEC7979" Click="Button_Click" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+        </StackPanel>
     </Grid>
 </Window>

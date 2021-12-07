@@ -57,7 +57,9 @@ namespace SocketLocationApp
         private SocketLocationManage SLManage = new SocketLocationManage();
         private DBMethod MySQL = new DBMethod();
         bool isInsert = false;
-        ObservableCollection<MyLocation> data;
+        bool CanInsert = false;
+        ObservableCollection<MyLocation> Socketdata;
+        ObservableCollection<MyLeonardo> Leonardodata;
         public MainWindow()
         {
             InitializeComponent();
@@ -75,6 +77,18 @@ namespace SocketLocationApp
             public DateTime create_dt { get; set; }
             public DateTime update_dt { get; set; }
         }
+        class MyLeonardo
+        {
+            public string ip_address { get; set; }
+            public string MachineNumber { get; set; }
+            public string Station { get; set; }
+            public int Intervals { get; set; }
+            public string create_user { get; set; }
+            public string update_user { get; set; }
+            public DateTime create_dt { get; set; }
+            public DateTime update_dt { get; set; }
+        }
+        
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             DisplayData();
@@ -82,7 +96,9 @@ namespace SocketLocationApp
         private void DisplayData()
         {
             DG_socket.ItemsSource = null;
-            data = new ObservableCollection<MyLocation>();
+            DG_leonardo.ItemsSource = null;
+            Socketdata = new ObservableCollection<MyLocation>();
+            Leonardodata = new ObservableCollection<MyLeonardo>();
             Conn = MySQL.getConnect();
             string SelectSQL = @"SELECT id, ip_address, location, readerno, pointname, create_user, update_user, create_dt, update_dt FROM socketlocation ";
             Conn.Open();
@@ -100,18 +116,47 @@ namespace SocketLocationApp
                 Location.update_user = dataReader.GetString(6);
                 Location.create_dt = dataReader.GetDateTime(7);
                 Location.update_dt = dataReader.GetDateTime(8);
-                data.Add(Location);
+                Socketdata.Add(Location);
             }
-            DG_socket.ItemsSource = data;
+            dataReader.Close();
+            DG_socket.ItemsSource = Socketdata;
+            Conn.Close();
+            SelectSQL = @"SELECT ip_address, MachineNumber, Station, Intervals, create_user, update_user, create_dt, update_dt FROM ldsetting ";
+            Conn.Open();
+            cmd = new MySqlCommand(SelectSQL, Conn);
+            dataReader = cmd.ExecuteReader();
+            while (dataReader.Read())
+            {
+                MyLeonardo Leonardo = new MyLeonardo();
+                Leonardo.ip_address = dataReader.GetString(0);
+                Leonardo.MachineNumber = dataReader.GetString(1);
+                Leonardo.Station = dataReader.GetString(2);
+                Leonardo.Intervals = dataReader.GetInt32(3);
+                Leonardo.create_user = dataReader.GetString(4);
+                Leonardo.update_user = dataReader.GetString(5);
+                Leonardo.create_dt = dataReader.GetDateTime(6);
+                Leonardo.update_dt = dataReader.GetDateTime(7);
+                Leonardodata.Add(Leonardo);
+            }
+            dataReader.Close();
+            DG_leonardo.ItemsSource = Leonardodata;
             Conn.Close();
         }
         private void DG_socket_AddingNewItem(object sender, AddingNewItemEventArgs e)
         {
             isInsert = true;
         }
+        private void DG_leonardo_AddingNewItem(object sender, AddingNewItemEventArgs e)
+        {
+            CanInsert = true;
+        }
         private void DG_socket_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
         {
             isInsert = false;
+        }
+        private void DG_leonardo_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            CanInsert = false;
         }
         private void DG_socket_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
@@ -152,10 +197,122 @@ namespace SocketLocationApp
             }
             DisplayData();
         }
-        private void bt_edit_Click(object sender, RoutedEventArgs e)
+        private void DG_leonardo_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
-
-            MessageBox.Show("Can't uploaded photo, Add the employee first!", "Add Employee", MessageBoxButton.OK, MessageBoxImage.Information);
+            MyLeonardo LeonardoInfo = e.Row.Item as MyLeonardo;
+            if (LeonardoInfo != null)
+            {
+                if (LeonardoInfo.ip_address == "")
+                {
+                    CanInsert = false;
+                }
+            }
+            if (!CheckLeonardoData(LeonardoInfo))
+            {
+                DisplayData();
+                return;
+            }
+            if (CanInsert)
+            {
+                if (!InsertLeonardoInfo(LeonardoInfo, Conn))
+                {
+                    MessageBox.Show("新增失敗", "Add Leonardo Machine", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                else
+                {
+                    MessageBox.Show("新增成功", "Add Leonardo Machine", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            else
+            {
+                if (!UpdateLeonardoInfo(LeonardoInfo, Conn))
+                {
+                    MessageBox.Show("修改失敗", "Update Leonardo Machine", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                else
+                {
+                    MessageBox.Show("修改成功", "Update Leonardo Machine", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            DisplayData();
+        }
+        private void Delete_Socket(object sender, ExecutedRoutedEventArgs e)
+        {
+            MyLocation DeleteRow = DG_socket.SelectedItem as MyLocation;
+            if (DeleteRow != null)
+            {
+                if (e.Command == DataGrid.DeleteCommand)
+                {
+                   if (MessageBox.Show("Are you sure want to delete id " + DeleteRow.id + " ?", "Confirm Delete!", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    {
+                        string DeleteSQL = @"DELETE FROM socketlocation WHERE id = @id";
+                        try
+                        {
+                            Conn.Open();
+                            MySqlCommand cmd = new MySqlCommand(DeleteSQL, Conn);
+                            MySqlTransaction trans = Conn.BeginTransaction();
+                            cmd.Transaction = trans;
+                            cmd.Parameters.AddWithValue("@id", DeleteRow.id);
+                            cmd.ExecuteNonQueryAsync();
+                            trans.Commit();
+                            cmd.Cancel();
+                            Conn.Close();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Failed to delete socketlocation table. " + ex.Message);
+                            e.Handled = true;
+                        }
+                        finally
+                        {
+                            Conn.Close();
+                        }
+                    }
+                    else
+                    {
+                        e.Handled = true;
+                    }
+                }
+            }
+        }
+        private void Delete_Leonardo(object sender, ExecutedRoutedEventArgs e)
+        {
+            MyLeonardo DeleteRow = DG_leonardo.SelectedItem as MyLeonardo;
+            if (DeleteRow != null)
+            {
+                if (e.Command == DataGrid.DeleteCommand)
+                {
+                    if (MessageBox.Show("Are you sure want to delete id " + DeleteRow.ip_address + " ?", "Confirm Delete!", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    {
+                        string DeleteSQL = @"DELETE FROM ldsetting WHERE ip_address = @ip_address";
+                        try
+                        {
+                            Conn.Open();
+                            MySqlCommand cmd = new MySqlCommand(DeleteSQL, Conn);
+                            MySqlTransaction trans = Conn.BeginTransaction();
+                            cmd.Transaction = trans;
+                            cmd.Parameters.AddWithValue("@ip_address", DeleteRow.ip_address);
+                            cmd.ExecuteNonQueryAsync();
+                            trans.Commit();
+                            cmd.Cancel();
+                            Conn.Close();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Failed to delete ldsetting table. " + ex.Message);
+                            e.Handled = true;
+                        }
+                        finally
+                        {
+                            Conn.Close();
+                        }
+                    }
+                    else
+                    {
+                        e.Handled = true;
+                    }
+                }
+            }
         }
         private bool InsertInfo(MyLocation locationInfo, MySqlConnection Comm)
         {
@@ -187,6 +344,36 @@ namespace SocketLocationApp
                 return false;
             }
         }
+        private bool InsertLeonardoInfo(MyLeonardo LeonardoInfo, MySqlConnection Comm)
+        {
+            string InsertSQL = @"insert into ldsetting (ip_address, MachineNumber, Station, Intervals, create_user, update_user, create_dt, update_dt) 
+                values (@ip_address, @MachineNumber, @Station, @Intervals, @create_user, @update_user, @create_dt, @update_dt)";
+            try
+            {
+                Comm.Open();
+                MySqlCommand cmd = new MySqlCommand(InsertSQL, Comm);
+                MySqlTransaction trans = Comm.BeginTransaction();
+                cmd.Transaction = trans;
+                cmd.Parameters.AddWithValue("@ip_address", LeonardoInfo.ip_address);
+                cmd.Parameters.AddWithValue("@MachineNumber", LeonardoInfo.MachineNumber);
+                cmd.Parameters.AddWithValue("@Station", LeonardoInfo.Station);
+                cmd.Parameters.AddWithValue("@Intervals", LeonardoInfo.Intervals);
+                cmd.Parameters.AddWithValue("@create_user", "System");
+                cmd.Parameters.AddWithValue("@update_user", "System");
+                cmd.Parameters.AddWithValue("@create_dt", DateTime.Now);
+                cmd.Parameters.AddWithValue("@update_dt", DateTime.Now);
+                cmd.ExecuteNonQueryAsync();
+                trans.Commit();
+                cmd.Cancel();
+                Comm.Close();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to add ldsetting table. " + ex.Message);
+                return false;
+            }
+        }
         private bool UpdateInfo(MyLocation locationInfo, MySqlConnection Comm)
         {
             string UpdateSQL = @"UPDATE socketlocation SET ip_address = @ip_address, location = @location, readerno = @readerno, pointname = @pointname, 
@@ -213,6 +400,34 @@ namespace SocketLocationApp
             catch (Exception ex)
             {
                 PGMethod.WriteLog("Failed to update socketlocation table. " + ex.Message);
+                return false;
+            }
+        }
+        private bool UpdateLeonardoInfo(MyLeonardo LeonardoInfo, MySqlConnection Comm)
+        {
+            string UpdateSQL = @"UPDATE ldsetting SET MachineNumber = @MachineNumber, Station = @Station, Intervals = @Intervals, 
+                update_user = @update_user, update_dt = @update_dt WHERE ip_address = @ip_address";
+            try
+            {
+                Comm.Open();
+                MySqlCommand cmd = new MySqlCommand(UpdateSQL, Comm);
+                MySqlTransaction trans = Comm.BeginTransaction();
+                cmd.Transaction = trans;
+                cmd.Parameters.AddWithValue("@MachineNumber", LeonardoInfo.MachineNumber);
+                cmd.Parameters.AddWithValue("@Station", LeonardoInfo.Station);
+                cmd.Parameters.AddWithValue("@Intervals", LeonardoInfo.Intervals);
+                cmd.Parameters.AddWithValue("@update_user", "MODIFYER");
+                cmd.Parameters.AddWithValue("@update_dt", DateTime.Now);
+                cmd.Parameters.AddWithValue("@ip_address", LeonardoInfo.ip_address);
+                cmd.ExecuteNonQueryAsync();
+                trans.Commit();
+                cmd.Cancel();
+                Comm.Close();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                PGMethod.WriteLog("Failed to update ldsetting table. " + ex.Message);
                 return false;
             }
         }
@@ -259,7 +474,50 @@ namespace SocketLocationApp
             }
             return true;
         }
-
+        private bool CheckLeonardoData(MyLeonardo LeonardoInfo)
+        {
+            string ErrorMsg = "";
+            if (string.IsNullOrEmpty(LeonardoInfo.ip_address)) ErrorMsg += "IP位址必需輸入\n";
+            if (string.IsNullOrEmpty(LeonardoInfo.MachineNumber)) ErrorMsg += "機台名稱必需輸入\n";
+            if (string.IsNullOrEmpty(LeonardoInfo.Station)) ErrorMsg += "站別必需輸入\n";
+            if (LeonardoInfo.Intervals == 0) ErrorMsg += "間隔時間必需輸入\n";
+            string SelectSQL = @"SELECT ip_address FROM socketlocation WHERE ip_address = @ip_address";
+            Conn.Open();
+            MySqlCommand cmd = new MySqlCommand(SelectSQL, Conn);
+            cmd.Parameters.AddWithValue("@ip_address", LeonardoInfo.ip_address);
+            MySqlDataReader dataReader = cmd.ExecuteReader();
+            if (dataReader.HasRows)
+            {
+                while (dataReader.Read())
+                {
+                    if (dataReader.GetString(0) != LeonardoInfo.ip_address) ErrorMsg += "IP位址已存在\n";
+                    break;
+                }
+            }
+            Conn.Close();
+            Conn.Open();
+            SelectSQL = @"SELECT ip_address FROM ldsetting WHERE MachineNumber = @MachineNumber AND Station = @Station ";
+            cmd = new MySqlCommand(SelectSQL, Conn);
+            cmd.Parameters.AddWithValue("@MachineNumber", LeonardoInfo.MachineNumber);
+            cmd.Parameters.AddWithValue("@Station", LeonardoInfo.Station);
+            dataReader = cmd.ExecuteReader();
+            if (dataReader.HasRows)
+            {
+                while (dataReader.Read())
+                {
+                    if (dataReader.GetString(0) != LeonardoInfo.ip_address) ErrorMsg += "機台名稱 & 站別 已存在\n";
+                    break;
+                }
+            }
+            Conn.Close();
+            if (!string.IsNullOrEmpty(ErrorMsg))
+            {
+                MessageBox.Show(ErrorMsg, "Check Data", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+            return true;
+        }
+        
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             Environment.Exit(0);
