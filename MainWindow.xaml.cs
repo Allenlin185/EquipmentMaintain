@@ -1,35 +1,40 @@
-﻿using System;
+﻿using MySql.Data.MySqlClient;
+using MySQLOperator;
+using ProgramMethod;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Collections.ObjectModel;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using MySql.Data.MySqlClient;
-using ProgramMethod;
-using MySQLOperator;
-using System.Data;
 
 namespace SocketLocationApp
 {
     /// <summary>
     /// MainWindow.xaml 的互動邏輯
     /// </summary>
+    public class ComboBoxItem
+    {
+        public string Value { get; set; }
+        public string Text { get; set; }
+        public ComboBoxItem(string value, string text)
+        {
+            Value = value;
+            Text = text;
+        }
+        public override string ToString()
+        {
+            return Text;
+        }
+    }
+    
     public class PointList : List<string>
     {
         public PointList()
         {
-            this.Add("");
-            this.Add("IN");
-            this.Add("OUT");
+            Add("");
+            Add("IN");
+            Add("OUT");
         }
     }
     public class LocationList : List<string>
@@ -37,24 +42,27 @@ namespace SocketLocationApp
         public LocationList()
         {
             Add("");
-            Add("GG");
-            Add("YG");
-            Add("YG-M");
-            Add("YG-E");
-            Add("IG");
-            Add("IG-M");
-            Add("HP");
-            Add("QC1");
-            Add("QC2");
-            Add("QC2-YGIG");
-            Add("FQC");
+            Add("FQC");     //  最終檢驗站 for 4382(李奧納多機台)
+            Add("GG");      //  齒研讀頭(入口/出口)
+            Add("GG-R");    //  齒研控制讀頭(卡控入口)
+            Add("GG-C");    //  齒研PLC
+            Add("HP");      //  壓配 for 4382
+            Add("IG");      //  內研機台
+            Add("IG-M");    //  內研機台(馬博斯)
+            Add("QC1");     //  檢驗站1(李奧納多)
+            Add("QC2");     //  檢驗站2(李奧納多)
+            Add("QC2-YGIG");//  外研內研檢驗站(李奧納多)
+            Add("UPQC1");   //  更新檢驗站資料(含珠距復驗)
+            Add("YG");      //  外研機台
+            Add("YG-M");    //  外研機台(馬博斯)
+            Add("YG-E");    //  外研機台(勝亞轉出EXCEL)
         }
     }
     public partial class MainWindow : Window
     {
         private MySqlConnection Conn;
         private FileMethod PGMethod = new FileMethod();
-        private SocketLocationManage SLManage = new SocketLocationManage();
+        //private SocketLocationManage SLManage = new SocketLocationManage();
         private DBMethod MySQL = new DBMethod();
         bool isInsert = false;
         bool CanInsert = false;
@@ -63,7 +71,7 @@ namespace SocketLocationApp
         public MainWindow()
         {
             InitializeComponent();
-            
+
         }
         class MyLocation
         {
@@ -76,6 +84,8 @@ namespace SocketLocationApp
             public string update_user { get; set; }
             public DateTime create_dt { get; set; }
             public DateTime update_dt { get; set; }
+            public decimal lower_limit { get; set; }
+            public decimal upper_limit { get; set; }
         }
         class MyLeonardo
         {
@@ -88,7 +98,7 @@ namespace SocketLocationApp
             public DateTime create_dt { get; set; }
             public DateTime update_dt { get; set; }
         }
-        
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             DisplayData();
@@ -100,7 +110,7 @@ namespace SocketLocationApp
             Socketdata = new ObservableCollection<MyLocation>();
             Leonardodata = new ObservableCollection<MyLeonardo>();
             Conn = MySQL.getConnect();
-            string SelectSQL = @"SELECT id, ip_address, location, readerno, pointname, create_user, update_user, create_dt, update_dt FROM socketlocation ";
+            string SelectSQL = @"SELECT id, ip_address, location, readerno, pointname, create_user, update_user, created_at, updated_at FROM socketlocation ";
             Conn.Open();
             MySqlCommand cmd = new MySqlCommand(SelectSQL, Conn);
             MySqlDataReader dataReader = cmd.ExecuteReader();
@@ -116,12 +126,14 @@ namespace SocketLocationApp
                 Location.update_user = dataReader.GetString(6);
                 Location.create_dt = dataReader.GetDateTime(7);
                 Location.update_dt = dataReader.GetDateTime(8);
+                //Location.lower_limit = dataReader.GetDecimal(9);
+                //Location.upper_limit = dataReader.GetDecimal(10);
                 Socketdata.Add(Location);
             }
             dataReader.Close();
             DG_socket.ItemsSource = Socketdata;
             Conn.Close();
-            SelectSQL = @"SELECT ip_address, MachineNumber, Station, Intervals, create_user, update_user, create_dt, update_dt FROM ldsetting ";
+            SelectSQL = @"SELECT ip_address, MachineNumber, Station, Intervals, create_user, update_user, create_at, update_at FROM ldsetting ";
             Conn.Open();
             cmd = new MySqlCommand(SelectSQL, Conn);
             dataReader = cmd.ExecuteReader();
@@ -243,7 +255,7 @@ namespace SocketLocationApp
             {
                 if (e.Command == DataGrid.DeleteCommand)
                 {
-                   if (MessageBox.Show("Are you sure want to delete id " + DeleteRow.id + " ?", "Confirm Delete!", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    if (MessageBox.Show("Are you sure want to delete id " + DeleteRow.id + " ?", "Confirm Delete!", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                     {
                         string DeleteSQL = @"DELETE FROM socketlocation WHERE id = @id";
                         try
@@ -316,8 +328,8 @@ namespace SocketLocationApp
         }
         private bool InsertInfo(MyLocation locationInfo, MySqlConnection Comm)
         {
-            string InsertSQL = @"insert into socketlocation (ip_address, location, readerno, pointname, create_user, update_user, create_dt, update_dt) 
-                values (@ip_address, @location, @readerno, @pointname, @create_user, @update_user, @create_dt, @update_dt)";
+            string InsertSQL = @"insert into socketlocation (ip_address, location, readerno, pointname, create_user, update_user, created_at, updated_at) 
+                values (@ip_address, @location, @readerno, @pointname, @create_user, @update_user, @create_at, @update_at)";
             try
             {
                 Comm.Open();
@@ -326,16 +338,16 @@ namespace SocketLocationApp
                 cmd.Transaction = trans;
                 cmd.Parameters.AddWithValue("@ip_address", locationInfo.ip_address);
                 cmd.Parameters.AddWithValue("@location", locationInfo.location);
-                cmd.Parameters.AddWithValue("@readerno", (locationInfo.readerno == null)?"": locationInfo.readerno);
-                cmd.Parameters.AddWithValue("@pointname", (locationInfo.pointname == null)?"": locationInfo.pointname);
+                cmd.Parameters.AddWithValue("@readerno", (locationInfo.readerno == null) ? "" : locationInfo.readerno);
+                cmd.Parameters.AddWithValue("@pointname", (locationInfo.pointname == null) ? "" : locationInfo.pointname);
                 cmd.Parameters.AddWithValue("@create_user", "System");
                 cmd.Parameters.AddWithValue("@update_user", "System");
-                cmd.Parameters.AddWithValue("@create_dt", DateTime.Now);
-                cmd.Parameters.AddWithValue("@update_dt", DateTime.Now);
-                cmd.ExecuteNonQueryAsync();
+                cmd.Parameters.AddWithValue("@create_at", DateTime.Now);
+                cmd.Parameters.AddWithValue("@update_at", DateTime.Now);
+                cmd.Parameters.AddWithValue("@lower_limit", locationInfo.lower_limit);
+                cmd.Parameters.AddWithValue("@upper_limit", locationInfo.upper_limit);
+                cmd.ExecuteNonQuery();
                 trans.Commit();
-                cmd.Cancel();
-                Comm.Close();
                 return true;
             }
             catch (Exception ex)
@@ -343,11 +355,15 @@ namespace SocketLocationApp
                 PGMethod.WriteLog("Failed to add socketlocation table. " + ex.Message);
                 return false;
             }
+            finally
+            {
+                Comm.Close();
+            }
         }
         private bool InsertLeonardoInfo(MyLeonardo LeonardoInfo, MySqlConnection Comm)
         {
-            string InsertSQL = @"insert into ldsetting (ip_address, MachineNumber, Station, Intervals, create_user, update_user, create_dt, update_dt) 
-                values (@ip_address, @MachineNumber, @Station, @Intervals, @create_user, @update_user, @create_dt, @update_dt)";
+            string InsertSQL = @"insert into ldsetting (ip_address, MachineNumber, Station, Intervals, create_user, update_user, create_at, update_at) 
+                values (@ip_address, @MachineNumber, @Station, @Intervals, @create_user, @update_user, @create_at, @update_at)";
             try
             {
                 Comm.Open();
@@ -360,9 +376,9 @@ namespace SocketLocationApp
                 cmd.Parameters.AddWithValue("@Intervals", LeonardoInfo.Intervals);
                 cmd.Parameters.AddWithValue("@create_user", "System");
                 cmd.Parameters.AddWithValue("@update_user", "System");
-                cmd.Parameters.AddWithValue("@create_dt", DateTime.Now);
-                cmd.Parameters.AddWithValue("@update_dt", DateTime.Now);
-                cmd.ExecuteNonQueryAsync();
+                cmd.Parameters.AddWithValue("@create_at", DateTime.Now);
+                cmd.Parameters.AddWithValue("@update_at", DateTime.Now);
+                cmd.ExecuteNonQuery();
                 trans.Commit();
                 cmd.Cancel();
                 Comm.Close();
@@ -377,7 +393,7 @@ namespace SocketLocationApp
         private bool UpdateInfo(MyLocation locationInfo, MySqlConnection Comm)
         {
             string UpdateSQL = @"UPDATE socketlocation SET ip_address = @ip_address, location = @location, readerno = @readerno, pointname = @pointname, 
-                update_user = @update_user, update_dt = @update_dt WHERE id = @id";
+                update_user = @update_user, updated_at = @update_at WHERE id = @id";
             try
             {
                 Comm.Open();
@@ -389,11 +405,10 @@ namespace SocketLocationApp
                 cmd.Parameters.AddWithValue("@readerno", locationInfo.readerno);
                 cmd.Parameters.AddWithValue("@pointname", locationInfo.pointname);
                 cmd.Parameters.AddWithValue("@update_user", "MODIFYER");
-                cmd.Parameters.AddWithValue("@update_dt", DateTime.Now);
+                cmd.Parameters.AddWithValue("@update_at", DateTime.Now);
                 cmd.Parameters.AddWithValue("@id", locationInfo.id);
-                cmd.ExecuteNonQueryAsync();
+                cmd.ExecuteNonQuery();
                 trans.Commit();
-                cmd.Cancel();
                 Comm.Close();
                 return true;
             }
@@ -406,7 +421,7 @@ namespace SocketLocationApp
         private bool UpdateLeonardoInfo(MyLeonardo LeonardoInfo, MySqlConnection Comm)
         {
             string UpdateSQL = @"UPDATE ldsetting SET MachineNumber = @MachineNumber, Station = @Station, Intervals = @Intervals, 
-                update_user = @update_user, update_dt = @update_dt WHERE ip_address = @ip_address";
+                update_user = @update_user, update_at = @update_at WHERE ip_address = @ip_address";
             try
             {
                 Comm.Open();
@@ -417,9 +432,9 @@ namespace SocketLocationApp
                 cmd.Parameters.AddWithValue("@Station", LeonardoInfo.Station);
                 cmd.Parameters.AddWithValue("@Intervals", LeonardoInfo.Intervals);
                 cmd.Parameters.AddWithValue("@update_user", "MODIFYER");
-                cmd.Parameters.AddWithValue("@update_dt", DateTime.Now);
+                cmd.Parameters.AddWithValue("@update_at", DateTime.Now);
                 cmd.Parameters.AddWithValue("@ip_address", LeonardoInfo.ip_address);
-                cmd.ExecuteNonQueryAsync();
+                cmd.ExecuteNonQuery();
                 trans.Commit();
                 cmd.Cancel();
                 Comm.Close();
@@ -444,7 +459,7 @@ namespace SocketLocationApp
             MySqlDataReader dataReader = cmd.ExecuteReader();
             if (dataReader.HasRows)
             {
-                while(dataReader.Read())
+                while (dataReader.Read())
                 {
                     if (dataReader.GetInt32(0) != locationInfo.id) ErrorMsg += "IP位址已存在\n";
                     break;
@@ -460,7 +475,7 @@ namespace SocketLocationApp
             dataReader = cmd.ExecuteReader();
             if (dataReader.HasRows)
             {
-                while(dataReader.Read())
+                while (dataReader.Read())
                 {
                     if (dataReader.GetInt32(0) != locationInfo.id) ErrorMsg += "加工站別 & 機台名稱 & 出入口定義已存在\n";
                     break;
@@ -517,7 +532,7 @@ namespace SocketLocationApp
             }
             return true;
         }
-        
+
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             Environment.Exit(0);
